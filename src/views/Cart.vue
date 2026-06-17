@@ -101,3 +101,4 @@ export default {
 .pix-key { font-size: 18px; font-weight: bold; color: #1c7ed6; background: white; padding: 8px; border-radius: 4px; margin: 10px 0; border: 1px dashed #339af0; }
 .copy-btn { background: #339af0; color: white; font-size: 12px; padding: 6px 12px; }
 </style>
+EOF
