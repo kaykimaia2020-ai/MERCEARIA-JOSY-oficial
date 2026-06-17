@@ -40,7 +40,7 @@
       <div v-if="form.paymentMethod === 'pix'" class="pix-box">
         <h3>PAGAMENTO VIA PIX</h3>
         <p>Transfira o valor de <strong>R$ {{ totalFinal.toFixed(2) }}</strong> para o CNPJ abaixo:</p>
-        <div class="pix-key">35708277000158</div>
+        <div class="pix-key">35.708.277/0001-58</div>
         <button @click="copyPix" class="copy-btn">{{ copyText }}</button>
       </div>
       <p style="background: #fff3bf; padding: 10px; border-radius: 5px; font-weight: 500; color: #2b2d42;">
@@ -80,11 +80,12 @@ export default {
       });
       this.success = true;
       
-      // NOVA MENSAGEM CONFIGURADA AQUI:
-      alert('Compra aprovada! Chave PIX é 35708277000158');
+      // NOVA MENSAGEM COM PONTOS CONFIGURADA AQUI:
+      alert('Compra aprovada! Chave PIX é 35.708.277/0001-58');
     },
     copyPix() {
-      navigator.clipboard.writeText('35708277000158'); 
+      // COPIA COM OS PONTOS E BARRA AGORA:
+      navigator.clipboard.writeText('35.708.277/0001-58'); 
       this.copyText = '✓ Chave Copiada!';
       setTimeout(() => this.copyText = 'Copiar Chave CNPJ', 2000);
     }
@@ -102,5 +103,5 @@ export default {
 .pix-screen { text-align: center; background: white; padding: 30px; border-radius: 8px; max-width: 500px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 .pix-box { background: #e7f5ff; border: 2px solid #339af0; padding: 15px; border-radius: 8px; margin: 15px 0; }
 .pix-key { font-size: 18px; font-weight: bold; color: #1c7ed6; background: white; padding: 8px; border-radius: 4px; margin: 10px 0; border: 1px dashed #339af0; }
-.copy-btn { background: #339af0; color: white; font-size: 12px; padding: 6px 12px; }
+.copy-btn { background: #339af0; color: white; font-size: 12px; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
 </style>
