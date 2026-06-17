@@ -1,73 +1,67 @@
 <template>
-  <div class="cart-page">
-    <h2>Seu Carrinho de Compras</h2>
+  <div class="admin-page">
+    <h2>Painel Administrativo da Gerência</h2>
 
-    <div v-if="cart.length === 0" class="empty-msg">
-      <p>O seu carrinho está vazio no momento.</p>
-      <router-link to="/products"><button style="background: var(--secondary); color: white;">Ver Produtos</button></router-link>
+    <!-- TELA DE LOGIN (SÓ MOSTRA SE NÃO ESTIVER LOGADO) -->
+    <div v-if="!isLogged" class="admin-card login-box">
+      <h3>Acesso Restrito</h3>
+      <p>Digite a senha master para gerenciar a Mercearia Josy:</p>
+      <input 
+        v-model="passInput" 
+        type="password" 
+        placeholder="Digite a senha master" 
+        @keyup.enter="login"
+      >
+      <button @click="login" style="background: #1d3557; color: white; width: 100%;">
+        Entrar
+      </button>
     </div>
 
-    <div v-else-if="!checkoutSuccess" class="cart-layout">
-      <!-- Lista de Itens -->
-      <div class="items-section">
-        <div v-for="item in cart" :key="item.id" class="cart-item-card">
-          <img :src="item.image" :alt="item.name">
-          <div class="item-details">
-            <h3>{{ item.name }} ({{ item.brand }})</h3>
-            <p class="price">R$ {{ item.price.toFixed(2) }}</p>
-            <p>Qtd: {{ item.quantity }}</p>
-            <button @click="remove(item.id)" class="remove-btn">Remover</button>
+    <!-- PAINEL COMPLETO (SÓ MOSTRA SE A SENHA ESTIVER CORRETA) -->
+    <div v-else>
+      <div style="text-align: right; margin-bottom: 10px;">
+        <button @click="isLogged = false" style="background: #dee2e6; color: #495057; padding: 5px 10px;">Sair do Painel</button>
+      </div>
+
+      <!-- Seção 1: Adicionar Itens -->
+      <div class="admin-card text-left">
+        <h3>Novo Produto</h3>
+        <form @submit.prevent="save">
+          <input v-model="newP.name" placeholder="Nome do Produto (Ex: Óleo de Soja)" required>
+          <input v-model="newP.brand" placeholder="Marca (Ex: Liza)" required>
+          <input v-model.number="newP.price" type="number" step="0.01" placeholder="Preço (R$)" required>
+          <input v-model.number="newProdStock" type="number" placeholder="Estoque Inicial" required>
+          <input v-model="newP.image" placeholder="Link da Imagem na Internet" required>
+          <button type="submit" style="background: #1d3557; color: white; width: 100%;">Cadastrar na Prateleira</button>
+        </form>
+      </div>
+
+      <!-- Seção 2: Monitoramento de Vendas (O que as pessoas compraram) -->
+      <div class="admin-card text-left">
+        <h3>📈 Relatório de Pedidos Feitos (Vendas)</h3>
+        <div v-if="orders.length === 0">Nenhum pedido feito hoje.</div>
+        <div v-else>
+          <div v-for="o in orders" :key="o.id" class="order-card">
+            <p>📅 <strong>Data:</strong> {{ o.date }} | 💰 <strong>Total:</strong> R$ {{ o.total.toFixed(2) }} | <span class="badge">{{ o.customer.paymentMethod.toUpperCase() }}</span></p>
+            <p>🏠 <strong>Apartamento:</strong> {{ o.customer.block }} - {{ o.customer.apartment }} | ⏰ <strong>Retirada:</strong> {{ o.customer.pickupTime }} hs</p>
+            <strong>Itens comprados:</strong>
+            <ul>
+              <li v-for="i in o.items" :key="i.id">
+                {{ i.quantity }}x - {{ i.name }} ({{ i.brand }})
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <!-- Formulário de Retirada e Pagamento -->
-      <div class="checkout-section">
-        <h3>Dados de Retirada</h3>
-        
-        <label>Bloco:</label>
-        <input v-model="form.block" placeholder="Ex: Bloco B" required>
-
-        <label>Apartamento:</label>
-        <input v-model="form.apartment" placeholder="Ex: Apto 302" required>
-
-        <label>Horário Programado para Buscar:</label>
-        <input v-model="form.pickupTime" type="time" required>
-
-        <label>Forma de Pagamento:</label>
-        <select v-model="form.paymentMethod">
-          <option value="pix">PIX (Pague Online)</option>
-          <option value="credito">Cartão de Crédito (Na retirada)</option>
-          <option value="debito">Cartão de Débito (Na retirada)</option>
-          <option value="especie">Espécie / Dinheiro (Na retirada)</option>
-        </select>
-
-        <div class="total-box">
-          <span>Total Geral:</span>
-          <strong>R$ {{ cartTotal.toFixed(2) }}</strong>
+      <!-- Seção 3: Estoque Atual da Loja -->
+      <div class="admin-card text-left">
+        <h3>Gerenciar Estoque</h3>
+        <div v-for="p in products" :key="p.id" class="stock-item">
+          <span><strong>{{ p.name }}</strong> ({{ p.brand }}) - Estoque: {{ p.stock }} un - Preço: R$ {{ p.price.toFixed(2) }}</span>
+          <button @click="del(p.id)" class="del-btn">Excluir</button>
         </div>
-
-        <button @click="processCheckout" class="submit-order-btn">Confirmar e Finalizar</button>
       </div>
-    </div>
-
-    <!-- Tela Direcionada de PIX / Sucesso -->
-    <div v-else class="pix-screen">
-      <div class="success-icon">✅</div>
-      <h2>Pedido Confirmado com Sucesso!</h2>
-      <p>Seu pedido foi enviado para a gerência da Mercearia Josy.</p>
-      
-      <div v-if="form.paymentMethod === 'pix'" class="pix-box">
-        <h3>PAGAMENTO VIA PIX EXIGIDO</h3>
-        <p>Transfira o valor exato de <strong>R$ {{ totalPago.toFixed(2) }}</strong> para a chave abaixo:</p>
-        <div class="pix-key">CNPJ: 35.708.277/0001-58</div>
-        <small>Identificação da conta: Mercearia Josy</small>
-      </div>
-
-      <div class="pickup-reminder">
-        <p>🏠 Lembre-se de comparecer para retirar no horário agendado: <strong>{{ form.pickupTime }} hs</strong>.</p>
-      </div>
-      <button @click="resetPage" style="background: var(--secondary); color: white;">Voltar ao Início</button>
     </div>
   </div>
 </template>
@@ -76,48 +70,55 @@
 export default {
   data() {
     return {
-      checkoutSuccess: false,
-      totalPago: 0,
-      form: { block: '', apartment: '', pickupTime: '', paymentMethod: 'pix' }
+      isLogged: false,
+      passInput: '',
+      passCorrect: 'josyadm123',
+      newProdStock: null,
+      newP: { name: '', brand: '', price: null, image: '' }
     };
   },
   computed: {
-    cart() { return this.$store.state.cart; },
-    cartTotal() { return this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0); }
+    products() {
+      return this.$store.state.products;
+    },
+    orders() {
+      return this.$store.state.orders;
+    }
   },
   methods: {
-    remove(id) { this.$store.commit('REMOVE_FROM_CART', id); },
-    processCheckout() {
-      if (!this.form.block || !this.form.apartment || !this.form.pickupTime) {
-        alert('Por favor, preencha o bloco, apartamento e o horário de retirada!');
-        return;
+    login() {
+      if (this.passInput === this.passCorrect) {
+        this.isLogged = true;
+      } else {
+        alert('Senha errada!');
+        this.passInput = '';
       }
-      this.totalPago = this.cartTotal;
-      this.$store.commit('FINALIZAR_PEDIDO', {
-        items: [...this.cart],
-        total: this.cartTotal,
-        customer: { ...this.form }
-      });
-      this.checkoutSuccess = true;
     },
-    resetPage() {
-      this.checkoutSuccess = false;
-      this.$router.push('/');
+    save() {
+      this.$store.commit('ADD_PRODUCT', {
+        ...this.newP,
+        stock: this.newProdStock,
+        id: Date.now()
+      });
+      this.newP = { name: '', brand: '', price: null, image: '' };
+      this.newProdStock = null;
+      alert('Produto cadastrado com sucesso!');
+    },
+    del(id) {
+      if (confirm('Deseja excluir esse item da prateleira?')) {
+        this.$store.commit('DELETE_PRODUCT', id);
+      }
     }
   }
 };
 </script>
 
 <style scoped>
-.cart-layout { display: flex; gap: 30px; flex-wrap: wrap; margin-top: 20px; }
-.items-section { flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 15px; }
-.checkout-section { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-.cart-item-card { display: flex; background: white; padding: 15px; border-radius: 8px; gap: 15px; border: 1px solid #e9ecef; }
-.cart-item-card img { width: 80px; height: 80px; object-fit: contain; }
-.remove-btn { background: #ffc9c9; color: #c92a2a; font-size: 12px; margin-top: 5px; }
-.total-box { display: flex; justify-content: space-between; font-size: 18px; margin: 20px 0; border-top: 2px dashed #dee2e6; padding-top: 15px; }
-.submit-order-btn { background: #40c057; color: white; width: 100%; font-size: 16px; }
-.pix-screen { text-align: center; background: white; padding: 40px; border-radius: 8px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.pix-box { background: #e7f5ff; border: 2px solid #339af0; padding: 20px; border-radius: 8px; margin: 20px 0; }
-.pix-key { font-size: 20px; font-weight: bold; color: #1c7ed6; background: white; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px dashed #339af0; }
+.login-box { max-width: 350px; margin: 40px auto; text-align: center; }
+.admin-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.text-left { text-align: left; }
+.order-card { background: #f8f9fa; border-left: 5px solid #e63946; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #dee2e6; border-left-width: 6px; }
+.badge { background: #e63946; color: white; padding: 2px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+.stock-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; align-items: center; }
+.del-btn { background: #ffe3e3; color: #c92a2a; font-size: 11px; padding: 3px 8px; border: none; border-radius: 4px; cursor: pointer; }
 </style>
