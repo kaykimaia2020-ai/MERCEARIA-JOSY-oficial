@@ -2,79 +2,68 @@
   <div class="admin-page">
     <h2>Painel Administrativo da Gerência</h2>
 
-    <!-- TELA DE LOGIN (SÓ MOSTRA SE NÃO ESTIVER LOGADO) -->
+    <!-- TELA DE LOGIN -->
     <div v-if="!isLogged" class="admin-card login-box">
       <h3>Acesso Restrito</h3>
       <p>Digite a senha master para gerenciar a Mercearia Josy:</p>
       <input 
-        v-model="passwordInput" 
+        v-model="passInput" 
         type="password" 
-        placeholder="Digite sua senha" 
-        @keyup.enter="checkPassword"
+        placeholder="Digite a senha master" 
+        @keyup.enter="login"
       >
-      <button @click="checkPassword" style="background: var(--secondary); color: white; width: 100%;">
-        Entrar no Painel
+      <button @click="login" style="background: #1d3557; color: white; width: 100%;">
+        Entrar
       </button>
     </div>
 
-    <!-- PAINEL COMPLETO (SÓ MOSTRA SE A SENHA ESTIVER CORRETA) -->
+    <!-- PAINEL COMPLETO -->
     <div v-else>
       <div style="text-align: right; margin-bottom: 10px;">
-        <button @click="logout" style="background: #dee2e6; color: #495057; padding: 5px 10px;">Sair do Painel</button>
+        <button @click="isLogged = false" style="background: #dee2e6; color: #495057; padding: 5px 10px;">Sair do Painel</button>
       </div>
 
       <!-- Seção 1: Adicionar Itens -->
-      <div class="admin-card">
+      <div class="admin-card text-left">
         <h3>Novo Produto</h3>
-        <form @submit.prevent="saveProduct" class="admin-form">
-          <div class="form-group">
-            <input v-model="newProd.name" placeholder="Nome do Produto (Ex: Óleo de Soja)" required>
-            <input v-model="newProd.brand" placeholder="Marca (Ex: Liza)" required>
-          </div>
-          <div class="form-group">
-            <input v-model.number="newProd.price" type="number" step="0.01" placeholder="Preço (R$)" required>
-            <input v-model.number="newProd.stock" type="number" placeholder="Estoque Inicial" required>
-          </div>
-          <input v-model="newProd.image" placeholder="Link da imagem na Internet" required>
-          <button type="submit" class="save-btn">Cadastrar na Prateleira</button>
+        <form @submit.prevent="save">
+          <input v-model="newP.name" placeholder="Nome do Produto (Ex: Óleo de Soja)" required>
+          <input v-model="newP.brand" placeholder="Marca (Ex: Liza)" required>
+          <input v-model.number="newP.price" type="number" step="0.01" placeholder="Preço (R$)" required>
+          <input v-model.number="newProdStock" type="number" placeholder="Estoque Inicial" required>
+          <input v-model="newP.image" placeholder="Link da Imagem na Internet" required>
+          <button type="submit" style="background: #1d3557; color: white; width: 100%;">Cadastrar na Prateleira</button>
         </form>
       </div>
 
-      <!-- Seção 2: Monitoramento de Vendas -->
+      <!-- Seção 2: Monitoramento de Vendas com Botão Limpar -->
       <div class="admin-card text-left">
-        <h3>📈 Relatório de Pedidos / Compras Feitas</h3>
-        <div v-if="orders.length === 0" class="no-orders">Nenhum pedido feito hoje ainda.</div>
-        <div v-else class="orders-list">
-          <div v-for="order in orders" :key="order.id" class="order-log-card">
-            <div class="order-header">
-              <span>📅 <strong>Data/Hora:</strong> {{ order.date }}</span>
-              <span class="badge-payment">{{ order.customer.paymentMethod.toUpperCase() }}</span>
-            </div>
-            <div class="order-body">
-              <p>🏠 <strong>Local:</strong> {{ order.customer.block }} - {{ order.customer.apartment }}</p>
-              <p>⏰ <strong>Horário de Retirada escolhido:</strong> {{ order.customer.pickupTime }} hs</p>
-              <div class="order-items">
-                <strong>Itens comprados:</strong>
-                <ul>
-                  <li v-for="item in order.items" :key="item.id">
-                    {{ item.quantity }}x - {{ item.name }} ({{ item.brand }}) - R$ {{ (item.price * item.quantity).toFixed(2) }}
-                  </li>
-                </ul>
-              </div>
-              <div class="order-total">Valor Total: R$ {{ order.total.toFixed(2) }}</div>
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+          <h3 style="margin: 0;">📈 Relatório de Pedidos Feitos (Vendas)</h3>
+          <button v-if="orders.length > 0" @click="clearOrders" class="clear-orders-btn">🗑️ Limpar Todos os Pedidos</button>
+        </div>
+        
+        <div v-if="orders.length === 0">Nenhum pedido feito hoje.</div>
+        <div v-else>
+          <div v-for="o in orders" :key="o.id" class="order-card">
+            <p>📅 <strong>Data:</strong> {{ o.date }} | 💰 <strong>Total:</strong> R$ {{ o.total.toFixed(2) }} | <span class="badge">{{ o.customer.paymentMethod.toUpperCase() }}</span></p>
+            <p>🏠 <strong>Apartamento:</strong> {{ o.customer.block }} - {{ o.customer.apartment }} | ⏰ <strong>Retirada:</strong> {{ o.customer.pickupTime }} hs</p>
+            <strong>Itens comprados:</strong>
+            <ul>
+              <li v-for="i in o.items" :key="i.id">
+                {{ i.quantity }}x - {{ i.name }} ({{ i.brand }})
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
       <!-- Seção 3: Estoque Atual da Loja -->
-      <div class="admin-card">
-        <h3>Prateleira Atual (Gerenciar Estoque)</h3>
-        <div class="admin-stock-list">
-          <div v-for="p in products" :key="p.id" class="stock-item">
-            <span><strong>{{ p.name }}</strong> ({{ p.brand }}) - Preço: R$ {{ p.price.toFixed(2) }} | 📦 Estoque: {{ p.stock }} un</span>
-            <button @click="removeProduct(p.id)" class="delete-btn">Excluir</button>
-          </div>
+      <div class="admin-card text-left">
+        <h3>Gerenciar Estoque</h3>
+        <div v-for="p in products" :key="p.id" class="stock-item">
+          <span><strong>{{ p.name }}</strong> ({{ p.brand }}) - Estoque: {{ p.stock }} un - Preço: R$ {{ p.price.toFixed(2) }}</span>
+          <button @click="del(p.id)" class="del-btn">Excluir</button>
         </div>
       </div>
     </div>
@@ -86,10 +75,10 @@ export default {
   data() {
     return {
       isLogged: false,
-      passwordInput: '',
-      // SUA SENHA ESTÁ CONFIGURADA NESSA LINHA ABAIXO:
-      correctPassword: 'josyadm123', 
-      newProd: { name: '', brand: '', price: null, stock: null, image: '' }
+      passInput: '',
+      passCorrect: 'josyadm123',
+      newProdStock: null,
+      newP: { name: '', brand: '', price: null, image: '' }
     };
   },
   computed: {
@@ -97,26 +86,29 @@ export default {
     orders() { return this.$store.state.orders; }
   },
   methods: {
-    checkPassword() {
-      if (this.passwordInput === this.correctPassword) {
+    login() {
+      if (this.passInput === this.passCorrect) {
         this.isLogged = true;
       } else {
-        alert('Senha incorreta! Tente novamente.');
-        this.passwordInput = '';
+        alert('Senha errada!');
+        this.passInput = '';
       }
     },
-    logout() {
-      this.isLogged = false;
-      this.passwordInput = '';
+    save() {
+      this.$store.commit('ADD_PRODUCT', { ...this.newP, stock: this.newProdStock, id: Date.now() });
+      this.newP = { name: '', brand: '', price: null, image: '' };
+      this.newProdStock = null;
+      alert('Produto cadastrado com sucesso!');
     },
-    saveProduct() {
-      this.$store.commit('ADD_PRODUCT', { ...this.newProd, id: Date.now() });
-      this.newProd = { name: '', brand: '', price: null, stock: null, image: '' };
-      alert('Produto adicionado ao estoque!');
-    },
-    removeProduct(id) {
-      if(confirm('Deseja retirar esse produto da prateleira?')) {
+    del(id) {
+      if (confirm('Deseja excluir esse item da prateleira?')) {
         this.$store.commit('DELETE_PRODUCT', id);
+      }
+    },
+    clearOrders() {
+      if (confirm('Tem certeza que deseja apagar permanentemente toda a lista de pedidos?')) {
+        this.$store.commit('LIMPAR_PEDIDOS');
+        alert('Lista de pedidos apagada!');
       }
     }
   }
@@ -124,14 +116,13 @@ export default {
 </script>
 
 <style scoped>
-.login-box { max-width: 400px; margin: 50px auto; text-align: center; }
-.admin-card { background: white; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-.form-group { display: flex; gap: 15px; }
-.save-btn { background: var(--secondary); color: white; width: 100%; font-size: 16px; margin-top: 10px; }
-.delete-btn { background: #ffe3e3; color: #c92a2a; padding: 5px 10px; font-size: 12px; }
-.stock-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding: 10px 0; }
-.order-log-card { background: #f8f9fa; border-left: 5px solid var(--primary); padding: 15px; border-radius: 4px; margin-top: 15px; border: 1px solid #e9ecef; border-left-width: 6px; }
-.order-header { display: flex; justify-content: space-between; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; margin-bottom: 10px; }
-.badge-payment { background: #e63946; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-.order-total { text-align: right; font-weight: bold; color: var(--secondary); font-size: 16px; margin-top: 10px; border-top: 1px dashed #dee2e6; padding-top: 5px; }
+.login-box { max-width: 350px; margin: 40px auto; text-align: center; }
+.admin-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.text-left { text-align: left; }
+.order-card { background: #f8f9fa; border-left: 5px solid #e63946; padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #dee2e6; border-left-width: 6px; }
+.badge { background: #e63946; color: white; padding: 2px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+.stock-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; align-items: center; }
+.del-btn { background: #ffe3e3; color: #c92a2a; font-size: 11px; padding: 3px 8px; border: none; border-radius: 4px; cursor: pointer; }
+.clear-orders-btn { background: #fff5f5; color: #e63946; border: 1px solid #ffa8a8; font-size: 12px; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+.clear-orders-btn:hover { background: #ffe3e3; }
 </style>
