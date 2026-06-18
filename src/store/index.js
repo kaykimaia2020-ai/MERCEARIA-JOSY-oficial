@@ -1,65 +1,79 @@
 import { createStore } from 'vuex';
 
+// Funções de Segurança (Criptografia Base64 para proteger o banco de dados)
+const criptografar = (dado) => btoa(unescape(encodeURIComponent(JSON.stringify(dado))));
+const descriptografar = (stringCriptografada) => {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(stringCriptografada))));
+  } catch (e) {
+    return null;
+  }
+};
+
 export default createStore({
   state: {
-    // Produtos iniciais preenchidos como exemplo de mercado
-    products: [
-      { id: 1, name: 'Arroz Integral', brand: 'Tio João', price: 6.50, stock: 20, image: 'https://unsplash.com' },
-      { id: 2, name: 'Feijão Carioca', brand: 'Kicaldo', price: 7.80, stock: 15, image: 'https://unsplash.com' }
-    ],
+    products: [],
     cart: [],
-    orders: [] // Guarda as vendas finalizadas para o Admin consultar
+    orders: []
   },
   mutations: {
     INITIALIZE_STORE(state) {
-      const savedProducts = localStorage.getItem('josy_products');
-      const savedOrders = localStorage.getItem('josy_orders');
-      if (savedProducts) state.products = JSON.parse(savedProducts);
-      if (savedOrders) state.orders = JSON.parse(savedOrders);
+      const pSalvos = localStorage.getItem('josy_secure_p');
+      const oSalvos = localStorage.getItem('josy_secure_o');
+      
+      // Se já existirem dados criptografados, descriptografa. Se não, inicia prateleira padrão.
+      if (pSalvos) {
+        const dadosDecodificados = descriptografar(pSalvos);
+        if (dadosDecodificados) state.products = dadosDecodificados;
+      } else {
+        state.products = [
+          { id: 1, name: 'Arroz Integral 1kg', brand: 'Tio João', price: 6.50, stock: 20, image: 'https://unsplash.com' },
+          { id: 2, name: 'Feijão Carioca 1kg', brand: 'Kicaldo', price: 7.80, stock: 15, image: 'https://unsplash.com' }
+        ];
+        localStorage.setItem('josy_secure_p', criptografar(state.products));
+      }
+
+      if (oSalvos) {
+        const ordDecodificados = descriptografar(oSalvos);
+        if (ordDecodificados) state.orders = ordDecodificados;
+      }
     },
-    ADD_PRODUCT(state, product) {
-      state.products.push(product);
-      localStorage.setItem('josy_products', JSON.stringify(state.products));
+    ADD_PRODUCT(state, prod) {
+      state.products.push(prod);
+      localStorage.setItem('josy_secure_p', criptografar(state.products));
     },
     DELETE_PRODUCT(state, id) {
       state.products = state.products.filter(p => p.id !== id);
-      localStorage.setItem('josy_products', JSON.stringify(state.products));
+      localStorage.setItem('josy_secure_p', criptografar(state.products));
     },
-    ADD_TO_CART(state, product) {
-      const item = state.cart.find(p => p.id === product.id);
-      const originalProduct = state.products.find(p => p.id === product.id);
-      
-      if (originalProduct && originalProduct.stock > 0) {
+    ADD_TO_CART(state, prod) {
+      const item = state.cart.find(p => p.id === prod.id);
+      const orig = state.products.find(p => p.id === prod.id);
+      if (orig && orig.stock > 0) {
         if (item) {
-          if (item.quantity < originalProduct.stock) item.quantity++;
+          if (item.quantity < orig.stock) item.quantity++;
         } else {
-          state.cart.push({ ...product, quantity: 1 });
+          state.cart.push({ ...prod, quantity: 1 });
         }
       }
     },
-    REMOVE_FROM_CART(state, productId) {
-      state.cart = state.cart.filter(p => p.id !== productId);
+    REMOVE_FROM_CART(state, id) {
+      state.cart = state.cart.filter(p => p.id !== id);
     },
     FINALIZAR_PEDIDO(state, payload) {
-      // Baixar estoque dos itens comprados
-      payload.items.forEach(cartItem => {
-        const product = state.products.find(p => p.id === cartItem.id);
-        if (product) {
-          product.stock -= cartItem.quantity;
-        }
+      payload.items.forEach(cItem => {
+        const prod = state.products.find(p => p.id === cItem.id);
+        if (prod) prod.stock -= cItem.quantity;
       });
-      
-      // Registrar o pedido no painel de vendas
-      state.orders.push({
-        id: Date.now(),
-        date: new Date().toLocaleString('pt-BR'),
-        ...payload
-      });
-      
-      // Salvar tudo de forma segura
+      state.orders.push({ id: Date.now(), date: new Date().toLocaleString('pt-BR'), ...payload });
       state.cart = [];
-      localStorage.setItem('josy_products', JSON.stringify(state.products));
-      localStorage.setItem('josy_orders', JSON.stringify(state.orders));
+      localStorage.setItem('josy_secure_p', criptografar(state.products));
+      localStorage.setItem('josy_secure_o', criptografar(state.orders));
+    },
+    // NOVA FUNÇÃO: Limpa a lista de pedidos no painel
+    LIMPAR_PEDIDOS(state) {
+      state.orders = [];
+      localStorage.setItem('josy_secure_o', criptografar(state.orders));
     }
   }
 });
