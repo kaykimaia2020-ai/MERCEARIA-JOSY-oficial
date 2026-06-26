@@ -36,6 +36,10 @@ export default {
   mounted() {
     // Carrega dados iniciais do estoque
     this.$store.commit('INITIALIZE_STORE');
+
+    // Faz a chamada silenciosa para capturar e salvar o IP na Vercel
+    fetch('/api/registrar-ip')
+      .catch(error => console.error("Erro ao registrar IP:", error));
   }
 };
 </script>
